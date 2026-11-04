@@ -1,0 +1,78 @@
+
+const int redLED = 5;
+const int yellowLED = 6;
+const int greenLED = 7;
+
+const int buttonOn = 2;
+const int buttonOff = 3;
+
+bool trafficOn = false;
+
+int stage = 0;
+unsigned long previousTime = 0;
+
+int lastOnButton = HIGH;
+int lastOffButton = HIGH;
+
+void setup() {
+  pinMode(redLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(greenLED, OUTPUT);
+
+  pinMode(buttonOn, INPUT_PULLUP);
+  pinMode(buttonOff, INPUT_PULLUP);
+
+  turnOffLights();
+}
+
+void loop() {
+  int onState = digitalRead(buttonOn);
+  int offState = digitalRead(buttonOff);
+
+  if (onState == LOW && lastOnButton == HIGH) {
+    trafficOn = true;
+    stage = 0;
+    previousTime = millis();
+    showLights();
+  }
+
+ 
+  if (offState == LOW && lastOffButton == HIGH) {
+    trafficOn = false;
+    turnOffLights();
+  }
+
+  lastOnButton = onState;
+  lastOffButton = offState;
+
+  if (!trafficOn) {
+    return;
+  }
+
+  unsigned long now = millis();
+  unsigned long waitTime;
+
+  if (stage == 0 || stage == 2) {
+    waitTime = 3000;
+  } else {
+    waitTime = 1000;
+  }
+
+  if (now - previousTime >= waitTime) {
+    previousTime = now;
+    stage = (stage + 1) % 4;
+    showLights();
+  }
+}
+
+void showLights() {
+  digitalWrite(redLED, stage == 0);
+  digitalWrite(yellowLED, stage == 1 || stage == 3);
+  digitalWrite(greenLED, stage == 2);
+}
+
+void turnOffLights() {
+  digitalWrite(redLED, LOW);
+  digitalWrite(yellowLED, LOW);
+  digitalWrite(greenLED, LOW);
+}
