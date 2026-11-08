@@ -1,99 +1,38 @@
-const int buttonPin = 2;    
-const int sensorPin = 3;    
-const int ledPin = 9;       
-const int buzzerPin = 8;    
-const int potPin = A0;      
+const int ledPin = 9;      // Светодиод
+const int buzzerPin = 8;   // Пьезопищалка
+const int armBtn = 10;     // Кнопка включения охраны
+const int sensorBtn = 11;  // Кнопка-датчик
+const int potPin = A0;     // Потенциометр
 
-bool alarmArmed = false;
-bool alarmActive = false;
-
-int lastButtonState = HIGH;
-int lastSensorState = HIGH;
-
-unsigned long alarmStartTime = 0;
-unsigned long alarmDuration = 1000;
-
-unsigned long previousBlinkTime = 0;
-bool ledState = false;
-bool buzzerState = false;
+bool armed = false;
 
 void setup() {
-  pinMode(buttonPin, INPUT_PULLUP);
-  pinMode(sensorPin, INPUT_PULLUP);
-
   pinMode(ledPin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
-
-  digitalWrite(ledPin, LOW);
-  noTone(buzzerPin);
-
-  Serial.begin(9600);
+  pinMode(armBtn, INPUT_PULLUP);
+  pinMode(sensorBtn, INPUT_PULLUP);
 }
 
 void loop() {
-  int buttonState = digitalRead(buttonPin);
-  int sensorState = digitalRead(sensorPin);
-
-  // Кнопка включения/выключения охраны
-  if (lastButtonState == HIGH && buttonState == LOW) {
-    alarmArmed = !alarmArmed;
-
-    if (!alarmArmed) {
-      alarmActive = false;
-      digitalWrite(ledPin, LOW);
-      noTone(buzzerPin);
-    } else {
-      // Короткая вспышка при включении охраны
-      digitalWrite(ledPin, HIGH);
-      delay(100);
-      digitalWrite(ledPin, LOW);
-    }
-
-    delay(200); // Защита от дребезга кнопки
+  // Проверяем нажатие кнопки активации охраны
+  if (digitalRead(armBtn) == LOW) {
+    armed = !armed; // Меняем статус (вкл/выкл)
+    delay(300);     // Задержка от дребезга контактов
   }
 
-  lastButtonState = buttonState;
-
-  // Потенциометр задаёт длительность тревоги: 1–10 секунд
-  int potValue = analogRead(potPin);
-  alarmDuration = map(potValue, 0, 1023, 1000, 10000);
-
-  // Датчик запускает тревогу только в режиме охраны
-  if (alarmArmed &&
-      !alarmActive &&
-      lastSensorState == HIGH &&
-      sensorState == LOW) {
-
-    alarmActive = true;
-    alarmStartTime = millis();
-    previousBlinkTime = millis();
+  // Если охрана включена и сработал датчик
+  if (armed && digitalRead(sensorBtn) == LOW) {
+    // Считываем потенциометр и переводим в диапазон от 1000 до 5000 мс
+    int timeMs = map(analogRead(potPin), 0, 1023, 1000, 5000);
+    runAlarm(timeMs); 
   }
+}
 
-  lastSensorState = sensorState;
-
-  // Работа сигнализации
-  if (alarmActive) {
-    unsigned long currentTime = millis();
-
-    if (currentTime - alarmStartTime >= alarmDuration) {
-      alarmActive = false;
-      digitalWrite(ledPin, LOW);
-      noTone(buzzerPin);
-    } else {
-      // Быстрое мигание каждые 150 мс
-      if (currentTime - previousBlinkTime >= 150) {
-        previousBlinkTime = currentTime;
-        ledState = !ledState;
-        buzzerState = !buzzerState;
-
-        digitalWrite(ledPin, ledState);
-
-        if (buzzerState) {
-          tone(buzzerPin, 2000);
-        } else {
-          noTone(buzzerPin);
-        }
-      }
-    }
-  }
+// Пример функции runAlarm (добавьте её, если её ещё нет в коде)
+void runAlarm(int duration) {
+  digitalWrite(ledPin, HIGH);
+  tone(buzzerPin, 1000); // Включаем пищалку на частоте 1000 Гц
+  delay(duration);       // Ждем переданное время
+  digitalWrite(ledPin, LOW);
+  noTone(buzzerPin);     // Выключаем пищалку
 }
